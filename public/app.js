@@ -3,7 +3,8 @@ const legacyCartKey = 'stefbykurd-cart';
 const rememberedEmailKey = 'stefbykurd-remembered-email';
 const activeUserStorageKey = 'stefbykurd-active-user';
 const previewFavoritesKey = 'stefbykurd-preview-favorites';
-const isStaticPreview = window.location.hostname.endsWith('github.io');
+const isStaticPreview = window.location.hostname.endsWith('github.io') ||
+  window.location.hostname.endsWith('githack.com');
 const previewProducts = [
   {
     id: '00000000-0000-4000-8000-000000000001',
@@ -1253,7 +1254,7 @@ async function initialize() {
       const favorites = JSON.parse(localStorage.getItem(previewFavoritesKey) || '[]');
       if (Array.isArray(favorites)) state.favoriteIds = new Set(favorites);
     } catch {
-      localStorage.removeItem(previewFavoritesKey);
+      state.favoriteIds.clear();
     }
   }
   await fetchProducts();
