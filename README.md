@@ -14,6 +14,8 @@ npm install
 Copy-Item .env.example .env
 ```
 
+Cada cambio en `main` publica una vista previa estatica en GitHub Pages. Esta vista permite explorar y filtrar el catalogo, ver productos, guardar favoritos y probar la bolsa en el navegador; el acceso a cuentas, las compras y la gestion requieren el servidor Node.js y no estan disponibles en la vista previa.
+
 Edita `.env` y define `JWT_SECRET` con una cadena aleatoria de al menos 32 caracteres. Para crear al primer dueño, completa `OWNER_NAME`, `OWNER_EMAIL` y `OWNER_PASSWORD` (minimo 12 caracteres) y ejecuta:
 
 ```powershell

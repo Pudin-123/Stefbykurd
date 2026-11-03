@@ -2,6 +2,106 @@ const guestCartKey = 'stefbykurd-cart-guest';
 const legacyCartKey = 'stefbykurd-cart';
 const rememberedEmailKey = 'stefbykurd-remembered-email';
 const activeUserStorageKey = 'stefbykurd-active-user';
+const previewFavoritesKey = 'stefbykurd-preview-favorites';
+const isStaticPreview = window.location.hostname.endsWith('github.io');
+const previewProducts = [
+  {
+    id: '00000000-0000-4000-8000-000000000001',
+    name: 'Bolso tote floral',
+    category: 'Estampados',
+    description: 'Un toque de color para tus dias. Reutilizable, amplio y lleno de flores.',
+    image: 'assets/floral-tote.jpg',
+    priceCents: 189000,
+    stock: 24,
+    featured: 1,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000002',
+    name: 'Tote geometrico',
+    category: 'Estampados',
+    description: 'Diseno geometrico en tonos naturales, ligero y listo para acompanarte.',
+    image: 'assets/geometric-tote.jpg',
+    priceCents: 169000,
+    stock: 18,
+    featured: 1,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000003',
+    name: 'Bolso negro esencial',
+    category: 'Clasicos',
+    description: 'Minimalista y versatil. Tu bolso de todos los dias, hecho para durar.',
+    image: 'assets/black-tote.jpg',
+    priceCents: 149000,
+    stock: 32,
+    featured: 1,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000004',
+    name: 'Tote natural',
+    category: 'Clasicos',
+    description: 'Un basico atemporal en color natural, comodo y reutilizable.',
+    image: 'assets/natural-tote.jpg',
+    priceCents: 129000,
+    stock: 27,
+    featured: 0,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000005',
+    name: 'Bolso tote botanico',
+    category: 'Estampados',
+    description: 'Inspirado en la naturaleza, con un estampado botanico delicado.',
+    image: 'assets/botanical-tote.jpg',
+    priceCents: 199000,
+    stock: 14,
+    featured: 1,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000006',
+    name: 'Tote azul marino',
+    category: 'Clasicos',
+    description: 'Color profundo y silueta comoda para tus compras y salidas.',
+    image: 'assets/navy-tote.jpg',
+    priceCents: 159000,
+    stock: 20,
+    featured: 0,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000007',
+    name: 'Bolso tote de flores',
+    category: 'Estampados',
+    description: 'Un estampado alegre que transforma cualquier paseo.',
+    image: 'assets/flower-tote.jpg',
+    priceCents: 189000,
+    stock: 16,
+    featured: 0,
+    colors: [],
+    images: []
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000008',
+    name: 'Bolso rojo granate',
+    category: 'Clasicos',
+    description: 'Una pieza practica con un color que no pasa desapercibido.',
+    image: 'assets/burgundy-tote.jpg',
+    priceCents: 159000,
+    stock: 12,
+    featured: 0,
+    colors: [],
+    images: []
+  }
+];
 const state = {
   user: null,
   products: [],
@@ -191,6 +291,20 @@ function openCart() {
 }
 
 async function fetchProducts() {
+  if (isStaticPreview) {
+    const query = state.query.toLocaleLowerCase('es');
+    state.products = previewProducts.filter((product) =>
+      (!state.category || product.category === state.category) &&
+      (!query || `${product.name} ${product.category} ${product.description}`
+        .toLocaleLowerCase('es').includes(query))
+    );
+    state.categories = [...new Set(previewProducts.map((product) => product.category))];
+    for (const product of state.products) state.productCache.set(product.id, product);
+    renderCategories();
+    renderProducts();
+    renderCart();
+    return;
+  }
   const params = new URLSearchParams();
   if (state.query) params.set('q', state.query);
   if (state.category) params.set('category', state.category);
@@ -507,6 +621,29 @@ async function loadBuyerData() {
 }
 
 async function toggleFavorite(productId) {
+  if (isStaticPreview) {
+    const isFavorite = state.favoriteIds.has(productId);
+    if (isFavorite) {
+      state.favoriteIds.delete(productId);
+      state.favorites = state.favorites.filter((product) => product.id !== productId);
+    } else {
+      const product = state.productCache.get(productId) ||
+        previewProducts.find((item) => item.id === productId);
+      if (!product) return;
+      state.favoriteIds.add(productId);
+      state.favorites = [product, ...state.favorites.filter((item) => item.id !== productId)];
+    }
+    try {
+      localStorage.setItem(previewFavoritesKey, JSON.stringify([...state.favoriteIds]));
+    } catch {
+      showToast('No se pudieron guardar tus favoritos en este navegador.');
+    }
+    renderProducts();
+    const product = state.productCache.get(productId);
+    if (product && state.detailProductId === productId) renderProductDetails(product);
+    showToast(isFavorite ? 'Producto quitado de favoritos.' : 'Producto guardado en favoritos.');
+    return;
+  }
   if (state.user && state.user.role !== 'buyer') {
     showToast('Los favoritos estan disponibles para cuentas de cliente.');
     return;
@@ -544,6 +681,10 @@ async function toggleFavorite(productId) {
 }
 
 async function openAccount() {
+  if (isStaticPreview) {
+    showToast('Vista previa: el acceso a cuentas no esta habilitado.');
+    return;
+  }
   if (!state.user) {
     setAuthMode('login');
     showModal('auth-modal');
@@ -589,6 +730,10 @@ async function openAccount() {
 
 async function handleAuthSubmit(event) {
   event.preventDefault();
+  if (isStaticPreview) {
+    $('#auth-message').textContent = 'El acceso a cuentas no esta habilitado en esta vista previa.';
+    return;
+  }
   const form = event.currentTarget;
   const button = $('#auth-submit');
   button.disabled = true;
@@ -1102,7 +1247,24 @@ async function confirmCheckout() {
 async function initialize() {
   $('#year').textContent = String(new Date().getFullYear());
   $('#dashboard').hidden = true;
+  if (isStaticPreview) {
+    $('#preview-note').hidden = false;
+    try {
+      const favorites = JSON.parse(localStorage.getItem(previewFavoritesKey) || '[]');
+      if (Array.isArray(favorites)) state.favoriteIds = new Set(favorites);
+    } catch {
+      localStorage.removeItem(previewFavoritesKey);
+    }
+  }
   await fetchProducts();
+  if (isStaticPreview) {
+    state.cart = state.guestCart.map((item) => ({ ...item }));
+    syncAccountButton();
+    renderProducts();
+    renderCart();
+    persistCart({ sync: false });
+    return;
+  }
   try {
     const { user } = await api('/api/auth/me');
     state.user = user;
@@ -1180,6 +1342,10 @@ document.addEventListener('click', async (event) => {
   if (event.target.closest('#confirm-email')) return verifyEmail();
   if (event.target.closest('#checkout-button')) {
     if (!state.cart.length) return;
+    if (isStaticPreview) {
+      showToast('La compra no esta habilitada en esta vista previa.');
+      return;
+    }
     closeOverlays();
     if (!state.user) {
       setAuthMode('login');
